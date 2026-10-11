@@ -1,0 +1,524 @@
+对，这个反馈是正确的。它现在不是技术问题，而是**开发代理根本拿不到我们之前生成的 V0 源码**。
+
+先把这个文件下载下来：
+
+:chatgpt-content-reference{index="0"}[下载 PostTrainStack V0 源码](sandbox:/mnt/data/PostTrainStack_V0.zip)
+
+然后放到：
+
+```text
+D:\01_work\PostTrainOps\
+```
+
+建议最终目录直接整理成：
+
+```text
+D:\01_work\PostTrainOps\
+├── pyproject.toml
+├── Makefile
+├── README.md
+├── configs\
+├── src\
+├── tests\
+├── data\
+├── results\
+└── docs\
+```
+
+也就是说，**不要最终变成：**
+
+```text
+PostTrainOps\PostTrainStack_V0\src\...
+```
+
+最好把 ZIP 里的项目内容直接作为 `PostTrainOps` 根目录内容。
+
+PowerShell 可以直接：
+
+```powershell
+cd D:\01_work\PostTrainOps
+
+Expand-Archive `
+  -Path .\PostTrainStack_V0.zip `
+  -DestinationPath .\_v0_tmp `
+  -Force
+
+Get-ChildItem .\_v0_tmp -Force
+```
+
+确认 ZIP 内实际根目录后，把源码合并到当前仓库根目录，**保留它刚刚已经创建的 `docs/`**。
+
+然后把下面这段直接发给开发代理。
+
+V0 源码现在已经提供。
+
+项目根目录：
+
+```text
+D:\01_work\PostTrainOps
+```
+
+请立即重新检查当前仓库。
+
+你之前已经完成的：
+
+```text
+docs/
+docs/p1-sft.md
+docs/sources/
+docs/status.md
+```
+
+全部保留，不要删除。
+
+现在应当已经存在或即将存在 V0 的：
+
+```text
+pyproject.toml
+Makefile
+README.md
+configs/
+src/
+tests/
+data/
+results/
+```
+
+不要重新讨论项目设计，不要重新生成一套 V0，也不要继续停留在“缺少源码”的状态。
+
+---
+
+# 现在执行以下顺序
+
+## 1. 接管并审计真实 V0
+
+检查：
+
+```text
+pyproject.toml
+Makefile
+configs/
+src/posttrain_stack/
+tests/
+```
+
+确认真实实现与此前 P1 指令描述是否一致。
+
+运行现有测试。
+
+记录：
+
+```text
+V0 test count
+passed
+failed
+skipped
+```
+
+如果 V0 存在阻塞 P1 的 bug：
+
+只做最小修复。
+
+禁止大规模重构。
+
+---
+
+# 2. 验证 V0 五个 Gate
+
+依次验证当前仓库是否具备：
+
+```text
+G1 安装
+G2 frozen data preparation
+G3 base inference
+G4 correctness evaluation
+G5 metrics JSON persistence
+```
+
+如果网络或 GPU 阻止某一步实际运行：
+
+明确标记：
+
+```text
+NOT EXECUTED
+```
+
+并说明原因。
+
+禁止伪造结果。
+
+---
+
+# 3. 立即进入 P1 SFT
+
+严格按照：
+
+```text
+docs/p1-sft.md
+```
+
+实施。
+
+不要再重新设计 P1。
+
+开发：
+
+```text
+GSM8K train
+    ↓
+SFT dataset builder
+    ↓
+leakage guard
+    ↓
+TRL SFTTrainer
+    ↓
+LoRA
+    ↓
+checkpoint
+    ↓
+existing V0 evaluator
+    ↓
+Base vs SFT comparison
+    ↓
+failure transition analysis
+```
+
+---
+
+# 4. 必须复用 V0 Evaluator
+
+这是本轮最重要的工程约束。
+
+禁止创建：
+
+```text
+evaluation_sft.py
+sft_special_evaluator.py
+```
+
+之类的独立评测逻辑。
+
+必须让：
+
+```text
+Base Model
+SFT Model
+```
+
+走**同一套 evaluation implementation**。
+
+允许为了支持任意模型路径，对现有 evaluator 做通用化，例如：
+
+```text
+--model <model_or_checkpoint>
+--output-prefix <name>
+```
+
+但：
+
+```text
+answer extraction
+correctness definition
+frozen dataset
+generation policy
+metrics
+```
+
+不能因为 SFT 改变。
+
+---
+
+# 5. SFT 数据必须和 Frozen Test 隔离
+
+训练只允许读取：
+
+```text
+GSM8K train
+```
+
+严禁训练代码读取：
+
+```text
+data/frozen/
+```
+
+除 leakage check 只读取 question/hash 用于检查外，不得获取 frozen label 作为任何训练输入。
+
+实现：
+
+```text
+normalized_question_hash(train)
+∩
+normalized_question_hash(frozen)
+=
+∅
+```
+
+如果非空：
+
+直接失败。
+
+---
+
+# 6. 实现两档训练
+
+必须同时存在：
+
+## Smoke
+
+```text
+make sft-smoke
+```
+
+只验证：
+
+```text
+load
+tokenize
+train
+backward
+optimizer
+save
+reload
+evaluate
+```
+
+训练规模必须非常小。
+
+---
+
+## Full
+
+```text
+make sft
+```
+
+正式使用配置文件运行。
+
+关键超参数不得散落硬编码。
+
+---
+
+# 7. 使用 LoRA
+
+P1 默认：
+
+```text
+peft.enabled = true
+```
+
+显式配置：
+
+```text
+r
+lora_alpha
+lora_dropout
+target_modules
+bias
+task_type
+```
+
+不要隐藏关键默认值。
+
+同时保留未来关闭 PEFT 的配置接口，但本阶段不要求跑 Full Fine-Tuning。
+
+---
+
+# 8. 增加统一 Run Manifest
+
+每次训练：
+
+```text
+runs/<run_id>/
+```
+
+至少保存：
+
+```text
+config.yaml
+run_manifest.json
+training_metrics.json
+checkpoint/
+```
+
+Manifest 必须记录真实环境和版本。
+
+不存在的信息：
+
+```json
+null
+```
+
+禁止猜测。
+
+---
+
+# 9. 自动执行 Base vs SFT 对比
+
+新增：
+
+```text
+make compare-sft
+```
+
+输出：
+
+```text
+results/comparisons/base_vs_sft.json
+results/comparisons/base_vs_sft.md
+```
+
+必须比较：
+
+```text
+accuracy
+format_valid_rate
+avg_output_tokens
+samples_per_second
+```
+
+如果真实获得训练指标：
+
+再加入：
+
+```text
+training_time
+peak_vram
+train_samples_per_second
+```
+
+---
+
+# 10. 实现行为变化分析
+
+逐题比较 Base 与 SFT：
+
+```text
+Base wrong  → SFT correct = improved
+Base correct → SFT wrong  = regressed
+both correct
+both wrong
+```
+
+保存：
+
+```text
+results/analysis/base_vs_sft_cases.jsonl
+```
+
+并生成统计。
+
+这不是可选功能。
+
+---
+
+# 11. 测试
+
+在已有 V0 tests 基础上增加：
+
+```text
+SFT dataset conversion
+answer canonicalization
+train/frozen leakage detection
+manifest generation
+SFT config parsing
+comparison metrics
+transition classification
+```
+
+不要删除已有测试。
+
+---
+
+# 12. 实际执行能力允许的所有验证
+
+至少运行：
+
+```text
+make test
+```
+
+如果当前环境支持：
+
+```text
+make data
+make sft-smoke
+make eval-base
+make eval-sft
+make compare-sft
+```
+
+正式 Full SFT 如果硬件和网络允许也执行：
+
+```text
+make sft
+```
+
+如果无法执行：
+
+不要停下其他开发工作。
+
+完成代码、测试、静态验证和可执行路径，并准确报告未执行原因。
+
+---
+
+# 13. 最终不要只汇报“代码已完成”
+
+最终报告必须区分：
+
+## VERIFIED
+
+真实执行并通过的内容。
+
+## IMPLEMENTED BUT NOT EXECUTED
+
+已经完成实现但受硬件、模型下载、网络等环境限制未运行的内容。
+
+## FAILED
+
+真实执行失败的项目以及失败原因。
+
+## RESULTS
+
+只列真实产生的实验结果。
+
+禁止写示例数字冒充 benchmark。
+
+---
+
+# 14. 当前阶段边界
+
+仍然禁止实现：
+
+```text
+DPO
+Reward Model
+GRPO
+PPO
+OpenRLHF
+Ray
+vLLM rollout
+distributed training
+```
+
+本轮必须把：
+
+```text
+Base
+↓
+SFT
+↓
+Same Frozen Evaluation
+↓
+Comparison
+↓
+Failure Analysis
+```
+
+完整闭环做好。
+
+现在直接开始代码实施，不再询问我实现细节。
+
+这次有一个重点：**不要让开发代理重新生成一个 V0。** 我们已经有 V0，它应该做的是“接管真实 V0 → 验证 → 在上面增加 P1”。
+
+等它跑完，把它最后的开发报告和测试结果贴给我。我们先做一次**代码/实验红队审计**，确认 Base 与 SFT 的比较没有数据泄漏、评测漂移或假指标，再决定是否进入 P2 DPO。

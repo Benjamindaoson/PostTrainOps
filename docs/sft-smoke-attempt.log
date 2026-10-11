@@ -1,0 +1,25 @@
+Using the latest cached version of the dataset since openai/gsm8k couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'main' at D:\01_work\PostTrainOps\.cache\huggingface\datasets\openai___gsm8k\main\0.0.0\740312add88f781978c0658806c59bc2815b9866 (last modified on Thu Oct  1 21:34:20 2026).
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\01_work\PostTrainOps\src\posttrain_stack\training\sft.py", line 199, in <module>
+    main()
+  File "D:\01_work\PostTrainOps\src\posttrain_stack\training\sft.py", line 177, in main
+    result = run_training(args.config)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\01_work\PostTrainOps\src\posttrain_stack\training\sft.py", line 126, in run_training
+    trainer = SFTTrainer(model=cfg['model_name'], args=SFTConfig(**params),
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\01_work\PostTrainOps\.venv\Lib\site-packages\trl\trainer\sft_trainer.py", line 986, in __init__
+    model = create_model_from_path(model, **model_init_kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\01_work\PostTrainOps\.venv\Lib\site-packages\trl\trainer\utils.py", line 1320, in create_model_from_path
+    model = architecture.from_pretrained(model_id, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\01_work\PostTrainOps\.venv\Lib\site-packages\transformers\modeling_utils.py", line 4243, in from_pretrained
+    checkpoint_files, sharded_metadata = _get_resolved_checkpoint_files(
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\01_work\PostTrainOps\.venv\Lib\site-packages\transformers\modeling_utils.py", line 747, in _get_resolved_checkpoint_files
+    raise OSError(
+OSError: Qwen/Qwen2.5-0.5B-Instruct does not appear to have a file named pytorch_model.bin or model.safetensors.

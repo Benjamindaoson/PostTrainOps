@@ -1,0 +1,38 @@
+{
+  "accuracy": 1,
+  "avg_output_tokens": 3,
+  "dataset": "fixture",
+  "evaluated_at_utc": "2026-10-01T13:48:01.809369+00:00",
+  "evaluation_limit": 8,
+  "evaluator_sha256": "53e6dba89b2e8c266a914673e55741d848a088161d78242d9a0805869dddc07b",
+  "extraction_methods": {
+    "last_number": 8
+  },
+  "format_valid_rate": 0,
+  "frozen_file": "D:\\01_work\\PostTrainOps\\.cache\\verification-tests\\test_real_offline_lora_train_s0\\frozen\\test.jsonl",
+  "frozen_file_sha256": "7cd55622df3250856b1ec25931fbd6011b6354838367b1089c4b4fa3eb634c90",
+  "generation": {
+    "batch_size": 8,
+    "do_sample": false,
+    "max_new_tokens": 4
+  },
+  "model": "D:\\01_work\\PostTrainOps\\.cache\\verification-tests\\test_real_offline_lora_train_s0\\runs\\20261001T134800Z-533398ce\\checkpoint",
+  "num_samples": 8,
+  "predictions_sha256": "2d9cc9b46d958f25f0e1df91e578dd610e7dffa31e9b30771598423c4d849a43",
+  "project": "OFFLINE_FIXTURE_NOT_BENCHMARK",
+  "prompt": {
+    "system": "Reasoning",
+    "user_template": "{question}"
+  },
+  "runtime": {
+    "cuda_available": false,
+    "cuda_device": null,
+    "elapsed_seconds": 0.009642400000302587,
+    "python": "3.12.10",
+    "samples_per_second": 829.6689620580927,
+    "torch": "2.14.1+cpu"
+  },
+  "seed": 42,
+  "stage": "fixture",
+  "tokenizer_sha256": "5b7bd865633b11ed2c30b4803b85e1df67910e904419d7c44efeb6bbdd2c6418"
+}

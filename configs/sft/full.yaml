@@ -1,0 +1,43 @@
+model_name: Qwen/Qwen2.5-0.5B-Instruct
+output_dir: runs
+seed: 42
+smoke: false
+evaluation_limit: null
+evaluation_config: configs/base/qwen2_5_0_5b_gsm8k.yaml
+dataset:
+  name: openai/gsm8k
+  config: main
+  source_split: train
+  max_samples: null
+  output_path: data/sft/train.jsonl
+  manifest_path: data/sft/train.manifest.json
+training:
+  learning_rate: 0.0002
+  num_train_epochs: 1
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 8
+  max_length: 1024
+  max_steps: -1
+  bf16: true
+  fp16: false
+  gradient_checkpointing: true
+  logging_steps: 10
+  save_strategy: epoch
+  save_steps: 100
+  report_to: []
+  optim: adamw_torch
+  lr_scheduler_type: linear
+  warmup_steps: 30
+  weight_decay: 0.0
+  max_grad_norm: 1.0
+  packing: false
+  completion_only_loss: true
+  eos_token: '<|im_end|>'
+peft:
+  enabled: true
+  r: 8
+  lora_alpha: 16
+  lora_dropout: 0.05
+  target_modules: [q_proj, v_proj]
+  bias: none
+  task_type: CAUSAL_LM

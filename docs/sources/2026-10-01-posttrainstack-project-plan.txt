@@ -1,0 +1,556 @@
+可以。我们把 **PostTrainStack** 按“求职工程项目”来设计，而不是做成几个 Notebook 的合集。
+
+核心目标只有一句：
+
+> **构建一个可复现的大模型后训练系统，在同一模型、同一数据和同一冻结评测集上，完成 SFT、DPO、Reward Modeling、GRPO，并统一比较训练收益、成本与失败模式。**
+
+底层第一版直接用 TRL；它现在已经提供 SFT、DPO、Reward Model 和 GRPO 对应训练能力。Open-R1 用来参考 GRPO / RLVR 的数据与 recipe；等单卡版本成熟以后，再接 OpenRLHF，把项目升级到 Ray + vLLM + DeepSpeed 的工程级训练。:chatgpt-content-reference{index="0"}
+
+---
+
+# 一、PostTrainStack 最终应该长这样
+
+不要做成：
+
+```text
+几个 Notebook
+├── sft.ipynb
+├── dpo.ipynb
+├── grpo.ipynb
+```
+
+这种简历价值很低。
+
+我们要做的是：
+
+```text
+                     PostTrainStack
+
+                         Dataset
+                            │
+                ┌───────────┴───────────┐
+                │                       │
+             SFT Data             Preference Data
+                │                       │
+                ↓                 ┌─────┴─────┐
+          Base → SFT              ↓           ↓
+                │               DPO      Reward Model
+                │                 │
+                └──────────┐      │
+                           ↓      ↓
+                          GRPO
+                           │
+                           ↓
+                Unified Evaluation
+                           │
+              ┌────────────┼────────────┐
+              ↓            ↓            ↓
+         Capability     Alignment     Failure
+         Evaluation     Evaluation    Analysis
+```
+
+其中特别重要：
+
+**Reward Model 不是 DPO → RM → GRPO 的中间步骤。**
+
+它是独立训练出来的评分模型。
+
+而 DPO 和 GRPO 都可以从同一个 SFT checkpoint 出发。
+
+---
+
+# 二、第一版只做一个领域
+
+我建议：
+
+# **数学推理**
+
+不是因为我们以后要做数学模型。
+
+而是因为数学有一个巨大的工程优势：
+
+> **答案可以自动验证。**
+
+例如：
+
+```text
+Question
+   ↓
+Model
+   ↓
+Reasoning + Final Answer
+   ↓
+Answer Extractor
+   ↓
+Gold Answer
+   ↓
+Correct / Incorrect
+```
+
+于是我们天然拥有：
+
+**SFT 数据**
+
+**Preference Data**
+
+**GRPO Reward**
+
+**Frozen Evaluation**
+
+四套东西都能从同一个任务建立。
+
+这样你才能真正理解不同 Post-training 方法之间的区别。
+
+---
+
+# 三、模型也不要一开始玩大的
+
+V0：
+
+```text
+Qwen 0.5B / 0.6B
+```
+
+目标：
+
+> 验证整个系统。
+
+V1：
+
+```text
+Qwen 1.5B
+```
+
+目标：
+
+> 做正式实验。
+
+V2：
+
+```text
+3B
+```
+
+目标：
+
+> 做简历结果。
+
+以后真的有多卡：
+
+```text
+7B / 8B
+```
+
+再做。
+
+第一阶段一定要有意识地：
+
+> **牺牲模型能力，换实验迭代速度。**
+
+---
+
+# 四、整个项目分 7 个阶段
+
+我们一个一个来，不同时开工。
+
+## P0：实验基础设施
+
+先不要训练。
+
+把：
+
+```text
+数据
+模型
+评测
+配置
+日志
+checkpoint
+实验记录
+```
+
+搭起来。
+
+验收条件：
+
+> `python evaluate.py --model base`
+
+能输出一份完整 Base Model baseline。
+
+---
+
+## P1：SFT
+
+完成：
+
+```text
+Base
+ ↓
+SFT
+ ↓
+Evaluation
+```
+
+然后回答：
+
+> SFT 到底让模型改变了什么？
+
+---
+
+## P2：Preference Data + DPO
+
+自动生成多个候选答案：
+
+```text
+Prompt
+├── Answer A ✓
+├── Answer B ✗
+├── Answer C ✓
+└── Answer D ✗
+```
+
+构造：
+
+```text
+Chosen / Rejected
+```
+
+然后：
+
+```text
+SFT
+ ↓
+DPO
+ ↓
+Evaluation
+```
+
+---
+
+## P3：Reward Model
+
+复用 Preference Dataset：
+
+```text
+Prompt
++
+Chosen
++
+Rejected
+   ↓
+Reward Model
+```
+
+评估：
+
+```text
+Pairwise Accuracy
+Margin
+Calibration
+Length Bias
+```
+
+这一块会直接衔接你之前的 Reward Modeling 经验。
+
+---
+
+## P4：GRPO
+
+重新从：
+
+```text
+SFT checkpoint
+```
+
+出发。
+
+同一个 Prompt 生成：
+
+```text
+Response 1
+Response 2
+Response 3
+Response 4
+```
+
+自动 verifier 给 reward。
+
+然后 GRPO 更新 policy。
+
+Open-R1 当前公开 recipe 就是这种思路，例如其 Qwen2.5-1.5B GRPO 配置使用可验证代码任务，并组合 correctness 和 format reward。:chatgpt-content-reference{index="2"}
+
+---
+
+## P5：统一评测
+
+这是整个项目最重要的一层。
+
+最后必须能生成：
+
+| Model | Accuracy | Preference Win Rate | Format | Avg Length | Reward |
+|---|---:|---:|---:|---:|---:|
+| Base | | | | | |
+| SFT | | | | | |
+| DPO | | | | | |
+| GRPO | | | | | |
+
+再增加：
+
+```text
+training time
+peak VRAM
+samples/sec
+tokens/sec
+checkpoint size
+```
+
+于是你不只是说：
+
+> “我会 DPO。”
+
+而是：
+
+> “我在统一实验条件下比较过不同 Post-training 方法的收益与训练成本。”
+
+这就开始有工程味了。
+
+---
+
+# 五、P6 才开始做真正的工程化
+
+当算法全部跑通后，再增加：
+
+```text
+Config-driven Training
+Experiment Tracking
+Checkpoint / Resume
+Mixed Precision
+LoRA / QLoRA
+Gradient Checkpointing
+Dataset Versioning
+Reproducible Seeds
+Docker
+CI Smoke Tests
+```
+
+然后第二阶段换成：
+
+# OpenRLHF
+
+现在 OpenRLHF 已经包含 SFT、Reward Model、DPO，以及 PPO、GRPO、REINFORCE++、RLOO 等 RL 能力，并建立在 Ray、vLLM、DeepSpeed 等基础设施之上。:chatgpt-content-reference{index="3"}
+
+于是项目会从：
+
+```text
+单 GPU Post-training
+```
+
+升级到：
+
+```text
+Distributed Post-training
+```
+
+这部分才真正对应比较高级的后训练岗位。
+
+---
+
+# 六、P7：Failure Lab
+
+这个项目最终真正拉开差距的是这一层。
+
+我们故意制造失败。
+
+例如：
+
+### Preference Noise
+
+```text
+0%
+5%
+10%
+20%
+```
+
+观察 DPO。
+
+### Reward Noise
+
+观察 GRPO。
+
+### Length Bias
+
+Reward Model 是否喜欢长答案？
+
+### Reward Hacking
+
+```text
+Reward ↑
+True Accuracy ↓
+```
+
+### KL / Policy Drift
+
+训练是不是越跑越偏？
+
+### Data Quality
+
+```text
+1k high-quality
+vs
+10k noisy
+```
+
+哪个更好？
+
+到这一步：
+
+**学习项目 → 简历项目 → 研究素材**
+
+三件事就统一了。
+
+---
+
+# 七、最终仓库结构
+
+我们就按这个建：
+
+```text
+posttrain-stack/
+
+├── configs/
+│   ├── base/
+│   ├── sft/
+│   ├── dpo/
+│   ├── reward/
+│   └── grpo/
+│
+├── posttrain/
+│
+│   ├── data/
+│   │   ├── download.py
+│   │   ├── preprocess.py
+│   │   ├── preference.py
+│   │   └── split.py
+│   │
+│   ├── training/
+│   │   ├── sft.py
+│   │   ├── dpo.py
+│   │   ├── reward.py
+│   │   └── grpo.py
+│   │
+│   ├── rewards/
+│   │   ├── correctness.py
+│   │   ├── format.py
+│   │   └── composite.py
+│   │
+│   ├── evaluation/
+│   │   ├── generate.py
+│   │   ├── accuracy.py
+│   │   ├── preference.py
+│   │   ├── bias.py
+│   │   └── compare.py
+│   │
+│   └── utils/
+│
+├── tests/
+│
+├── scripts/
+│
+├── results/
+│
+├── docker/
+│
+├── pyproject.toml
+├── Makefile
+└── README.md
+```
+
+注意这里最大的变化：
+
+> **TRL 只是我们的 Training Backend。**
+
+项目不能变成“TRL 示例代码复制品”。
+
+我们的价值是：
+
+**统一数据协议 + 统一训练接口 + 统一实验配置 + 统一评测 + Failure Analysis。**
+
+---
+
+# 八、我们现在只做第一步
+
+## **Step 1：Base Model + Frozen Evaluation**
+
+暂时：
+
+**不 SFT**
+
+**不 DPO**
+
+**不 RM**
+
+**不 GRPO**
+
+第一步只完成：
+
+```text
+Dataset
+   ↓
+Frozen Test Split
+   ↓
+Base Model Generation
+   ↓
+Answer Extraction
+   ↓
+Correctness Evaluation
+   ↓
+results/base.json
+```
+
+例如输出：
+
+```json
+{
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "dataset": "gsm8k",
+  "split": "frozen_test",
+  "num_samples": 500,
+  "accuracy": 0.426,
+  "avg_output_tokens": 173.4,
+  "format_valid_rate": 0.81,
+  "seed": 42
+}
+```
+
+以后：
+
+**SFT / DPO / GRPO 全部必须经过同一个 evaluator。**
+
+这样从项目第一天开始，就把最重要的原则立住：
+
+> **训练方法可以换，评测标准不能跟着训练方法换。**
+
+这其实也是 PostTrainStack 最重要的工程设计之一。
+
+---
+
+## 第一阶段完成标准
+
+我们先只认这 5 个 Gate：
+
+```text
+G1  项目可以一条命令安装
+
+G2  数据可以一条命令下载并生成 frozen split
+
+G3  Base Model 可以一条命令推理
+
+G4  Evaluation 可以自动算 correctness
+
+G5  实验结果自动保存 JSON
+```
+
+**这五个全部通过以后，我们才进入 SFT。**
+
+所以接下来真正应该动手的不是学 SFT，而是先把 **PostTrainStack V0 的仓库骨架 + Base Evaluation Pipeline** 写出来。然后每往后加一种训练方法，都只是往这个已经稳定的系统里面插一个新的 trainer。

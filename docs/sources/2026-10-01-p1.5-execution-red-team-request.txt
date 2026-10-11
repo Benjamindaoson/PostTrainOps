@@ -1,0 +1,1013 @@
+这份 P1 交付我认为是**合格的工程交付，但不是完成的实验交付**。
+
+最关键的是它没有把 tiny synthetic Qwen 的 10-step LoRA 冒充正式实验，这一点是对的。现在**绝对不要进入 P2 DPO**。下一步应该单独定义成：
+
+# P1.5 — 正式 SFT 实验执行 + 红队审计
+
+现在缺的不是代码，而是真实证据：
+
+\[
+Base\ Qwen
+\rightarrow
+SFT\ Qwen
+\rightarrow
+Same\ Frozen\ Evaluation
+\rightarrow
+Paired\ Comparison
+\rightarrow
+Failure\ Analysis
+\]
+
+只有这一条链真正跑完，P1 才算关闭。
+
+---
+
+## 一、目前我给 P1 的状态
+
+我会这样判：
+
+| Gate | 状态 |
+|---|---|
+| V0 preserved | ✅ PASS |
+| SFT data pipeline | ✅ PASS |
+| Leakage audit | ✅ PASS |
+| TRL + LoRA training path | ✅ PASS |
+| Save → Reload → Evaluator | ✅ PASS（tiny integration） |
+| 正式 Qwen Base Evaluation | ❌ 未执行 |
+| 正式 Qwen SFT Smoke | ❌ 未执行 |
+| 正式 Full SFT | ❌ 未执行 |
+| Base vs SFT frozen comparison | ❌ 未执行 |
+| Failure transition analysis | ⚠️ 实现了，但无正式数据 |
+| GPU/VRAM/throughput evidence | ❌ N/A |
+
+所以准确说：
+
+> **P1 Engineering Complete，P1 Experiment Incomplete。**
+
+这不是坏事。反而说明现在边界非常清晰。
+
+---
+
+# 二、下一步不要再开发功能
+
+这是最重要的一点。
+
+暂时不要做：
+
+```text
+DPO
+Preference Data
+Reward Model
+GRPO
+新的 evaluator
+更多指标
+Dashboard
+DeepSpeed
+OpenRLHF
+Ray
+vLLM
+```
+
+甚至那 5 个 V0 lint 我都不建议现在优先修。
+
+现在所有工作都服务于：
+
+> **把正式 Base → SFT 配对实验跑出来。**
+
+---
+
+# 三、换一台 CUDA 机器
+
+你现在这台：
+
+```text
+torch 2.14.1+cpu
+CUDA = false
+```
+
+没必要继续折腾。
+
+把整个：
+
+```text
+PostTrainStack_P1.zip
+```
+
+放到一台 NVIDIA GPU 机器。
+
+对于：
+
+```text
+Qwen2.5-0.5B + LoRA
+```
+
+实际上硬件要求非常低。
+
+哪怕：
+
+```text
+RTX 3090 24GB
+RTX 4090 24GB
+A10 24GB
+L4 24GB
+```
+
+都绰绰有余。
+
+这里也暂时没有必要租 A100/H100。
+
+---
+
+# 四、GPU 上第一步不是 Full SFT
+
+严格按这个顺序：
+
+## Step 1：环境证明
+
+先保存：
+
+```bash
+nvidia-smi
+```
+
+以及：
+
+```bash
+python - <<'PY'
+import torch
+print("torch:", torch.__version__)
+print("cuda:", torch.cuda.is_available())
+print("device:", torch.cuda.get_device_name(0) if torch.cuda.is_available() else None)
+print("bf16:", torch.cuda.is_bf16_supported() if torch.cuda.is_available() else None)
+PY
+```
+
+把结果存入：
+
+```text
+docs/evidence/gpu-environment.txt
+```
+
+我们以后简历里如果写 GPU / BF16 / VRAM，必须有 receipt。
+
+---
+
+# 五、然后先把模型权重完整下载
+
+不要边训练边碰运气下载。
+
+先明确缓存：
+
+```bash
+export HF_HOME=$PWD/.cache/huggingface
+```
+
+然后完整拉：
+
+```text
+Qwen/Qwen2.5-0.5B-Instruct
+```
+
+验证缓存不是 0 bytes。
+
+最好做一个简单模型加载：
+
+```python
+AutoTokenizer.from_pretrained(...)
+AutoModelForCausalLM.from_pretrained(...)
+```
+
+成功以后再开始 experiment。
+
+---
+
+# 六、第一个真实实验：Base Smoke
+
+运行 8 条只是验证推理：
+
+```text
+Qwen official weights
+        ↓
+existing evaluator
+        ↓
+8 frozen samples
+```
+
+必须确认：
+
+- 能加载模型；
+- prompt 正常；
+- generation 正常；
+- answer extractor 正常；
+- output JSONL 正常；
+- metrics JSON 正常。
+
+这里**准确率是多少完全不重要**。
+
+只看链路。
+
+---
+
+# 七、第二个实验：正式 Base 500
+
+然后马上冻结真实 Base：
+
+```text
+Qwen2.5-0.5B-Instruct
++
+500 frozen GSM8K
+```
+
+必须生成：
+
+```text
+results/base_predictions.jsonl
+results/base_metrics.json
+```
+
+然后这一份不要再覆盖。
+
+我甚至建议增加：
+
+```text
+SHA256(base_predictions.jsonl)
+SHA256(base_metrics.json)
+```
+
+到 experiment receipt。
+
+从这里开始：
+
+> **Base baseline 冻结。**
+
+---
+
+# 八、然后跑真正的 SFT Smoke
+
+现在才执行：
+
+```text
+32 samples
+10 steps
+LoRA
+```
+
+注意这个 smoke 必须用：
+
+> **真实 Qwen 权重**
+
+不能再用 synthetic tiny model。
+
+验收：
+
+```text
+load official Qwen
+↓
+attach LoRA
+↓
+10 steps
+↓
+loss finite
+↓
+save adapter
+↓
+reload adapter
+↓
+same evaluator
+```
+
+这一步通过以后，才证明：
+
+> **生产路径上的真实 Hugging Face 模型训练链已经通了。**
+
+---
+
+# 九、然后才跑 Full SFT
+
+使用：
+
+```text
+7,473 GSM8K train
+```
+
+训练正式 LoRA。
+
+这里我建议暂时不要疯狂调参。
+
+第一轮必须保持：
+
+> **one-shot predefined configuration**
+
+因为我们现在的目的不是把 GSM8K 榨到最高。
+
+而是建立第一个公平后训练实验。
+
+如果看完 test accuracy 再调超参数：
+
+```text
+test
+→ hyperparameter
+→ test
+```
+
+那 frozen test 就被污染了。
+
+---
+
+# 十、这里有一个实验治理问题需要补强
+
+你们现在有：
+
+```text
+train
+frozen test
+```
+
+但正式做项目以后，还应该有：
+
+```text
+train
+development / validation
+frozen test
+```
+
+**不能用 frozen 500 做 checkpoint selection / hyperparameter tuning。**
+
+所以这次第一轮 SFT：
+
+> 使用预先固定配置，一次性跑。
+
+之后 P2 之前，我们应该从 GSM8K train 内进一步拆：
+
+```text
+train
+dev
+```
+
+例如：
+
+```text
+90% train
+10% dev
+```
+
+Frozen 500 永远只做 final evaluation。
+
+这个我建议成为 PostTrainStack 的全局实验治理原则。
+
+---
+
+# 十一、SFT 完成后，用完全同一 evaluator 跑 500 条
+
+必须确保 Base 和 SFT：
+
+```text
+same frozen file hash
+same decoding params
+same prompt construction
+same max_new_tokens
+same answer extractor
+same metric code
+```
+
+唯一允许不同的：
+
+```text
+model/checkpoint
+```
+
+然后才生成：
+
+```text
+Base vs SFT
+```
+
+---
+
+# 十二、我最关心的不是 Accuracy +X%
+
+最终结果不能只告诉我：
+
+```text
+Base accuracy = xx
+SFT accuracy = yy
+```
+
+我要看完整四象限：
+
+```text
+Base wrong → SFT correct
+Base correct → SFT wrong
+Both correct
+Both wrong
+```
+
+尤其看：
+
+## Improved
+
+SFT 真正学会了什么？
+
+## Regressed
+
+SFT 把原来会的问题为什么搞错了？
+
+## Both wrong
+
+是 reasoning failure？
+
+format failure？
+
+arithmetic？
+
+instruction following？
+
+## Both correct
+
+答案虽然都对，SFT 是否变得：
+
+- 更长；
+- 更短；
+- 更模板化；
+- 更稳定。
+
+这才是 learning by doing 真正开始的地方。
+
+---
+
+# 十三、正式 P1 Pass Gate
+
+我建议现在把 P1 最终 Gate 冻结成这样：
+
+### G1 — Official model path
+
+真实 `Qwen2.5-0.5B-Instruct` 完成：
+
+```text
+load → inference
+```
+
+**必须 PASS。**
+
+### G2 — Official SFT path
+
+真实 Qwen 完成：
+
+```text
+LoRA → save → reload
+```
+
+**必须 PASS。**
+
+### G3 — Full training
+
+7,473 条正式训练结束，无 NaN / crash。
+
+**必须 PASS。**
+
+### G4 — Frozen protocol equality
+
+Base/SFT 的：
+
+```text
+dataset hash
+generation config
+evaluator
+answer parser
+```
+
+完全一致。
+
+**必须 PASS。**
+
+### G5 — Paired results
+
+500 条都有 Base/SFT 一一对应 predictions。
+
+**必须 PASS。**
+
+### G6 — Failure Analysis
+
+四类 transition 输出真实数据。
+
+**必须 PASS。**
+
+### G7 — No frozen-test tuning
+
+不得根据正式 test 结果回头调超参再重新宣称同一 test 是 frozen。
+
+**必须 PASS。**
+
+然后才能：
+
+# P1 CLOSED
+
+再进入 P2。
+
+---
+
+# 十四、直接给开发代理下一条指令
+
+继续处理现有：
+
+**PostTrainStack**
+
+当前 P1 工程实现已经完成，但正式实验尚未闭环。
+
+本阶段定义为：
+
+# P1.5 — Official SFT Experiment Execution & Red-Team Audit
+
+不要实现任何新的训练方法。
+
+禁止进入：
+
+```text
+DPO
+Preference Data
+Reward Model
+GRPO
+PPO
+OpenRLHF
+Ray
+DeepSpeed distributed training
+vLLM
+```
+
+本阶段唯一目标：
+
+```text
+Official Qwen Base
+        ↓
+Frozen Evaluation
+        ↓
+Official Qwen SFT
+        ↓
+Same Frozen Evaluation
+        ↓
+Strict Paired Comparison
+        ↓
+Failure Analysis
+        ↓
+P1 Final Audit
+```
+
+---
+
+# 1. 首先记录 GPU 环境
+
+运行并保存：
+
+```text
+nvidia-smi
+Python version
+torch version
+CUDA availability
+CUDA runtime
+GPU name
+GPU memory
+BF16 support
+transformers version
+trl version
+peft version
+```
+
+保存：
+
+```text
+docs/evidence/p1-gpu-environment.txt
+```
+
+任何无法读取的数据记为 null。
+
+禁止推测。
+
+---
+
+# 2. 使用项目本地 Hugging Face Cache
+
+显式设置项目本地：
+
+```text
+HF_HOME=<project>/.cache/huggingface
+```
+
+不要依赖宿主机失效的全局 E: 配置。
+
+完整下载并验证：
+
+```text
+Qwen/Qwen2.5-0.5B-Instruct
+```
+
+模型权重必须实际存在且可以：
+
+```text
+tokenizer load
+model load
+```
+
+记录实际模型 revision / commit hash（如果 API 可以取得）。
+
+---
+
+# 3. Official Base Smoke
+
+使用现有 V0 evaluator。
+
+运行：
+
+```text
+8 frozen samples
+```
+
+要求：
+
+```text
+official model
+official tokenizer
+existing chat template
+existing answer extractor
+existing metrics
+```
+
+不得创建新的 smoke evaluator。
+
+成功后保存 smoke receipt。
+
+Smoke 结果不作为 benchmark。
+
+---
+
+# 4. Official Base Full Evaluation
+
+运行全部：
+
+```text
+500 frozen samples
+```
+
+生成正式：
+
+```text
+results/base_predictions.jsonl
+results/base_metrics.json
+```
+
+记录两个文件：
+
+```text
+SHA-256
+```
+
+并保存至：
+
+```text
+docs/evidence/base-evaluation-receipt.json
+```
+
+完成后 Base results 视为冻结。
+
+后续不得静默覆盖。
+
+---
+
+# 5. Official SFT Smoke
+
+使用：
+
+```text
+Qwen/Qwen2.5-0.5B-Instruct
++
+真实 smoke SFT dataset
++
+TRL SFTTrainer
++
+LoRA
+```
+
+执行现有 smoke configuration。
+
+必须真实完成：
+
+```text
+load
+LoRA attach
+forward
+loss
+backward
+optimizer step
+10 steps
+save adapter
+save tokenizer
+reload
+same frozen evaluator
+```
+
+记录：
+
+```text
+training loss
+training duration
+peak VRAM if reliably measurable
+checkpoint path
+adapter config
+run manifest
+```
+
+Smoke benchmark 不写入正式 Base/SFT comparison。
+
+---
+
+# 6. Official Full SFT
+
+使用已经冻结的：
+
+```text
+configs/sft/full.yaml
+```
+
+执行一轮正式训练。
+
+禁止先看 frozen test 后修改超参数。
+
+本次视为：
+
+```text
+predefined one-shot configuration
+```
+
+训练完成必须保存：
+
+```text
+full config
+manifest
+training metrics
+checkpoint
+LoRA adapter
+tokenizer
+environment receipt
+```
+
+如果发生 NaN / OOM / crash：
+
+保留失败 receipt。
+
+可以进行为使配置“可执行”所必需的工程修复，例如显存适配。
+
+但如果修改会实质改变实验超参数：
+
+必须在报告中明确说明。
+
+---
+
+# 7. Official SFT Frozen Evaluation
+
+使用与 Base 完全相同的：
+
+```text
+frozen_test SHA-256
+prompt protocol
+chat template
+decoding configuration
+max_new_tokens
+seed where applicable
+answer extractor
+metrics
+```
+
+唯一变化：
+
+```text
+model = SFT checkpoint
+```
+
+生成：
+
+```text
+results/sft_predictions.jsonl
+results/sft_metrics.json
+```
+
+记录 SHA-256。
+
+---
+
+# 8. Strict Protocol Audit
+
+在运行 comparison 前程序化检查：
+
+```text
+Base frozen hash == SFT frozen hash
+Base sample IDs == SFT sample IDs
+Base question hashes == SFT question hashes
+
+Base decoding config == SFT decoding config
+
+Base evaluator protocol version
+==
+SFT evaluator protocol version
+
+Base answer extractor
+==
+SFT answer extractor
+```
+
+任何关键协议不一致：
+
+comparison 直接失败。
+
+不要 warning 后继续。
+
+---
+
+# 9. Paired Comparison
+
+执行现有 comparison 模块。
+
+生成正式：
+
+```text
+results/comparisons/base_vs_sft.json
+results/comparisons/base_vs_sft.md
+```
+
+至少包含：
+
+```text
+Base accuracy
+SFT accuracy
+absolute delta
+relative delta where sensible
+
+format_valid_rate
+avg_output_tokens
+samples_per_second
+```
+
+训练指标仅在真实获得时加入：
+
+```text
+training duration
+peak VRAM
+train samples/sec
+```
+
+---
+
+# 10. Failure Transition Analysis
+
+对全部 500 条进行逐题配对：
+
+```text
+Base wrong → SFT correct
+Base correct → SFT wrong
+Both correct
+Both wrong
+```
+
+输出：
+
+```text
+results/analysis/base_vs_sft_cases.jsonl
+```
+
+统计四类数量和比例。
+
+另外自动生成一个 Markdown summary：
+
+```text
+results/analysis/base_vs_sft_summary.md
+```
+
+分别抽取代表性 case，但不得只人工选择支持 SFT 的案例。
+
+优先采用 deterministic sampling。
+
+---
+
+# 11. 检查潜在训练/评测污染
+
+正式报告必须确认：
+
+1. SFT 只使用 GSM8K train。
+2. Frozen 500 未参与训练。
+3. Frozen 500 未参与 checkpoint selection。
+4. Frozen 500 未参与超参数选择。
+5. Frozen labels 未进入 training prompt。
+6. Question exact normalized overlap = 0。
+7. 正式 test 结果出来后没有重新调参并再次宣称独立 final test。
+
+---
+
+# 12. 暂不做超参数搜索
+
+本阶段禁止：
+
+```text
+learning rate sweep
+epoch sweep
+LoRA rank sweep
+batch sweep
+根据 frozen accuracy 调参
+```
+
+原因：
+
+当前项目首先建立：
+
+```text
+Base → one predefined SFT → Frozen Test
+```
+
+的第一条可信实验链。
+
+后续如需优化，先从 train 中拆出独立 development split。
+
+---
+
+# 13. 红队检查
+
+完成结果后，主动尝试推翻以下结论：
+
+> SFT 改善了模型。
+
+检查至少：
+
+```text
+accuracy improvement 是否来自 format normalization
+答案是否只是更容易被 extractor 解析
+平均输出长度是否显著变化
+是否出现大量 Base correct → SFT wrong
+是否存在 generation truncation difference
+是否 adapter reload 与训练结束内存模型结果一致
+是否不同 sample ordering 造成比较错误
+```
+
+如果 SFT accuracy 上升主要由 format extraction 导致：
+
+必须明确报告。
+
+不要简单称为 capability improvement。
+
+---
+
+# 14. P1 最终状态
+
+完成后输出：
+
+## VERIFIED
+
+真实执行成功项目。
+
+## FAILED
+
+失败项目及证据。
+
+## RESULTS
+
+只使用正式 Qwen 实验结果。
+
+## P1 FINAL GATES
+
+逐项：
+
+```text
+G1 Official Model Path
+G2 Official SFT Path
+G3 Full Training
+G4 Protocol Equality
+G5 Paired Results
+G6 Failure Analysis
+G7 Frozen-Test Integrity
+```
+
+输出：
+
+```text
+PASS / FAIL
+```
+
+最终只能是：
+
+```text
+P1 STATUS: CLOSED — READY FOR P2
+```
+
+或者：
+
+```text
+P1 STATUS: OPEN — NOT READY FOR P2
+```
+
+不要因为代码已经实现而自动关闭 P1。
+
+现在执行正式实验，不增加新功能。
+
+等这一轮跑完，我们真正应该看的不是“准确率有没有涨 5%”，而是：
+
+> **Base → SFT 的行为到底发生了什么变化？**
+
+到那一步，你第一次会真正理解 **SFT 是干什么的**。
+
+然后我们才进入 P2，而且 P2 我建议也不先讲 DPO 数学，直接从这 500 道题里观察模型生成多个 response，然后亲手构造第一批 **chosen / rejected preference pairs**。这就继续保持你现在的 learning by doing 路线。

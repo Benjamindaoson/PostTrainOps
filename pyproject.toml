@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "posttrain-stack"
+version = "0.1.0"
+description = "A reproducible post-training stack for SFT, preference optimization, reward modeling, RL, and unified evaluation."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "accelerate>=1.0,<2",
+  "datasets>=4.0,<5",
+  "pyyaml>=6.0,<7",
+  "safetensors>=0.4",
+  "torch>=2.4",
+  "transformers>=5.0,<6",
+  "numpy>=2.2,<2.3",
+  "pandas>=2.2,<2.3",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0,<9",
+  "ruff>=0.8,<1",
+]
+sft = [
+  "trl==1.14.1",
+  "peft==0.21.2",
+]
+
+[project.scripts]
+pts-prepare = "posttrain_stack.data.prepare:main"
+pts-eval = "posttrain_stack.evaluation.run:main"
+pts-sft-data = "posttrain_stack.data.sft:main"
+pts-sft = "posttrain_stack.training.sft:main"
+pts-compare = "posttrain_stack.evaluation.compare:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]

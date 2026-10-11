@@ -1,0 +1,27 @@
+Collecting numpy==2.2.6
+  Downloading numpy-2.2.6-cp312-cp312-win_amd64.whl.metadata (60 kB)
+Collecting pandas==2.2.3
+  Downloading pandas-2.2.3-cp312-cp312-win_amd64.whl.metadata (19 kB)
+Requirement already satisfied: python-dateutil>=2.8.2 in d:\01_work\posttrainops\.venv\lib\site-packages (from pandas==2.2.3) (2.9.0.post0)
+Collecting pytz>=2020.1 (from pandas==2.2.3)
+  Using cached pytz-2026.4-py2.py3-none-any.whl.metadata (22 kB)
+Requirement already satisfied: tzdata>=2022.7 in d:\01_work\posttrainops\.venv\lib\site-packages (from pandas==2.2.3) (2026.4)
+Requirement already satisfied: six>=1.5 in d:\01_work\posttrainops\.venv\lib\site-packages (from python-dateutil>=2.8.2->pandas==2.2.3) (1.17.0)
+Downloading numpy-2.2.6-cp312-cp312-win_amd64.whl (12.6 MB)
+   ---------------------------------------- 12.6/12.6 MB 2.1 MB/s eta 0:00:00
+Downloading pandas-2.2.3-cp312-cp312-win_amd64.whl (11.5 MB)
+   ---------------------------------------- 11.5/11.5 MB 1.9 MB/s eta 0:00:00
+Using cached pytz-2026.4-py2.py3-none-any.whl (506 kB)
+Installing collected packages: pytz, numpy, pandas
+  Attempting uninstall: numpy
+    Found existing installation: numpy 2.5.3
+    Uninstalling numpy-2.5.3:
+      Successfully uninstalled numpy-2.5.3
+  Attempting uninstall: pandas
+    Found existing installation: pandas 3.0.6
+    Uninstalling pandas-3.0.6:
+      Successfully uninstalled pandas-3.0.6
+Successfully installed numpy-2.2.6 pandas-2.2.3 pytz-2026.4
+
+[notice] A new release of pip is available: 25.0.1 -> 26.2.1
+[notice] To update, run: D:\01_work\PostTrainOps\.venv\Scripts\python.exe -m pip install --upgrade pip

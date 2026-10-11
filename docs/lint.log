@@ -1,0 +1,7 @@
+src\posttrain_stack\data\answers.py:29:54: FURB157 [*] Verbose expression in `Decimal` constructor
+src\posttrain_stack\data\prepare.py:58:40: UP017 [*] Use `datetime.UTC` alias
+src\posttrain_stack\utils\io.py:6:1: UP035 [*] Import from `collections.abc` instead: `Iterable`
+src\posttrain_stack\utils\io.py:15:9: TRY004 Prefer `TypeError` exception for invalid type
+src\posttrain_stack\utils\io.py:51:17: TRY004 Prefer `TypeError` exception for invalid type
+Found 5 errors.
+[*] 3 fixable with the `--fix` option.

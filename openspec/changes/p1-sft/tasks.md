@@ -1,0 +1,7 @@
+- [x] Audit V0 and run original tests (7 passed)
+- [x] Test and implement train data provenance and overlap rejection
+- [x] Test and implement explicit SFT config, TRL/LoRA orchestration and receipts
+- [x] Add adapter loading to the existing evaluator without changing its scoring
+- [x] Test and implement paired comparison and all four transition classes
+- [x] Run available local checks and record real execution limits (22 tests; offline real LoRA)
+- [ ] Run official Qwen smoke and formal paired evaluation (blocked: weights download and CUDA)

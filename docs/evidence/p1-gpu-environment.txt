@@ -1,0 +1,14 @@
+{
+  "python": "3.12.10",
+  "torch": "2.14.1+cpu",
+  "cuda_available": false,
+  "cuda_runtime": null,
+  "gpu_name": null,
+  "gpu_memory_bytes": null,
+  "bf16_supported": null,
+  "versions": {
+    "transformers": "5.18.0",
+    "trl": "1.14.1",
+    "peft": "0.21.2"
+  }
+}

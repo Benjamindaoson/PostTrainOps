@@ -1,0 +1,32 @@
+project:
+  name: PostTrainStack
+  stage: v0-base-evaluation
+  seed: 42
+
+data:
+  dataset: openai/gsm8k
+  config: main
+  source_split: test
+  frozen_size: 500
+  output_path: data/frozen/gsm8k_test_500_seed42.jsonl
+  manifest_path: data/frozen/gsm8k_test_500_seed42.manifest.json
+
+model:
+  name_or_path: Qwen/Qwen2.5-0.5B-Instruct
+  dtype: auto
+  device_map: auto
+
+prompt:
+  system: >-
+    You are a careful math assistant. Solve the problem and end with exactly one line
+    in the form: Final answer: <answer>
+  user_template: "{question}"
+
+generation:
+  batch_size: 8
+  max_new_tokens: 256
+  do_sample: false
+
+output:
+  predictions_path: results/base_predictions.jsonl
+  metrics_path: results/base_metrics.json

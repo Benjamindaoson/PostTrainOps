@@ -1,0 +1,843 @@
+下一步不要再扩基础设施，直接进入 **P1：SFT**。
+
+目标很明确：
+
+> **在不改变 V0 冻结评测集和评测逻辑的前提下，增加 SFT 训练链路，得到第一个可与 Base Model 公平比较的后训练结果。**
+
+开发顺序应该是：
+
+**先验证 V0 → 构造 SFT 数据 → 实现 SFT Trainer → 跑 Smoke Train → 正式训练 → 用原来的 frozen test 评测 → 自动生成 Base vs SFT 对比结果。**
+
+下面这段可以直接扔给 Codex / Claude Code / Cursor Agent。
+
+你现在负责继续开发现有项目：
+
+**PostTrainStack｜大模型后训练全栈系统**
+
+当前阶段为：
+
+# P1 — Supervised Fine-Tuning
+
+不要重新设计项目，不要另起仓库，不要做 DPO、Reward Model、GRPO。直接基于现有 V0 继续开发。
+
+---
+
+# 一、当前项目状态
+
+现有 V0 已经完成：
+
+1. 标准 Python 工程结构
+2. Qwen2.5-0.5B-Instruct Base Model 推理
+3. GSM8K Frozen Test Set
+4. Frozen Test Manifest
+5. Dataset Fingerprint
+6. SHA-256
+7. Answer Extraction
+8. Accuracy Evaluation
+9. Format Valid Rate
+10. Avg Output Tokens
+11. Throughput
+12. Base Predictions JSONL
+13. Base Metrics JSON
+14. 单元测试
+
+当前核心原则：
+
+> **Frozen Evaluation 是整个 PostTrainStack 的固定裁判。**
+
+禁止因为 SFT 修改 frozen test、answer extractor、correctness definition 或 evaluation protocol，以获得更好的指标。
+
+---
+
+# 二、本阶段唯一目标
+
+完成：
+
+```text
+GSM8K Train
+    ↓
+SFT Dataset Builder
+    ↓
+Qwen2.5-0.5B-Instruct
+    ↓
+SFT
+    ↓
+SFT Checkpoint
+    ↓
+Existing Frozen Evaluation Pipeline
+    ↓
+Base vs SFT Comparison
+```
+
+最终必须回答：
+
+> 在完全相同的冻结测试集和生成条件下，SFT 相比 Base Model 到底改变了什么？
+
+---
+
+# 三、开始开发前先审计 V0
+
+首先完整检查当前仓库。
+
+不要假设 README 描述一定与代码一致。
+
+必须确认：
+
+- 当前目录结构
+- `pyproject.toml`
+- CLI / Makefile
+- Base config
+- Dataset preparation
+- frozen manifest
+- SHA-256 逻辑
+- answer extraction
+- evaluation runner
+- metrics
+- tests
+- output schema
+
+运行现有测试。
+
+如果 V0 当前存在阻塞 P1 的真实 bug，可以做最小修复。
+
+不要进行无关重构。
+
+不要为了“代码更漂亮”大面积修改已经工作的 V0。
+
+---
+
+# 四、数据设计
+
+SFT 训练数据必须来自：
+
+```text
+GSM8K train split
+```
+
+严禁读取：
+
+```text
+data/frozen/
+```
+
+训练数据和 frozen test 必须严格隔离。
+
+---
+
+## 4.1 SFT 样本格式
+
+统一转换为 conversational format。
+
+例如：
+
+```python
+{
+    "messages": [
+        {
+            "role": "user",
+            "content": "<question>"
+        },
+        {
+            "role": "assistant",
+            "content": "<reasoning>\nFinal answer: <answer>"
+        }
+    ]
+}
+```
+
+优先复用 GSM8K 原始 reasoning。
+
+但是最终答案必须标准化成：
+
+```text
+Final answer: X
+```
+
+目的是：
+
+1. 保留监督推理过程
+2. 建立稳定的最终答案输出协议
+3. 方便现有 answer extractor 解析
+4. 为以后 GRPO format reward 留接口
+
+---
+
+## 4.2 禁止数据泄漏
+
+必须实现程序化检查：
+
+```text
+train question
+∩
+frozen test question
+=
+empty
+```
+
+至少检查：
+
+### Exact overlap
+
+标准化 question 后做 hash comparison。
+
+### Dataset provenance
+
+训练 manifest 必须记录：
+
+```text
+source dataset
+source split
+num samples
+seed
+SHA-256
+dataset fingerprint
+generation timestamp
+```
+
+如果检测到 train/frozen overlap：
+
+**直接失败。**
+
+不要 warning 后继续训练。
+
+---
+
+# 五、训练方式
+
+第一版使用：
+
+```text
+TRL SFTTrainer
+```
+
+不要自己重新实现 Trainer。
+
+Trainer 是第三方训练后端。
+
+PostTrainStack 的价值是：
+
+```text
+data
+config
+training orchestration
+experiment governance
+evaluation
+comparison
+reproducibility
+```
+
+而不是重新写 gradient descent。
+
+---
+
+# 六、第一版训练配置
+
+默认模型：
+
+```text
+Qwen/Qwen2.5-0.5B-Instruct
+```
+
+第一版优先保证单卡可以稳定运行。
+
+实现两套配置。
+
+---
+
+## Smoke Config
+
+用于验证训练链路：
+
+```text
+max_steps: 10
+small training subset
+small sequence length
+frequent logging
+save only when necessary
+```
+
+目标不是模型性能。
+
+目标是验证：
+
+```text
+dataset
+→ tokenizer
+→ chat template
+→ loss
+→ backward
+→ optimizer
+→ checkpoint
+→ reload
+→ frozen evaluation
+```
+
+全部正常。
+
+---
+
+## Full SFT Config
+
+正式配置独立 YAML 管理。
+
+至少显式包含：
+
+```text
+model_name
+dataset
+output_dir
+seed
+
+learning_rate
+num_train_epochs
+per_device_train_batch_size
+gradient_accumulation_steps
+
+max_length
+
+bf16 / fp16
+gradient_checkpointing
+
+logging_steps
+save_strategy
+save_steps
+
+report_to
+```
+
+不要把关键训练参数硬编码进 Python。
+
+---
+
+# 七、LoRA / Full Fine-Tuning
+
+P1 第一版优先实现：
+
+```text
+LoRA
+```
+
+理由：
+
+- 降低显存需求
+- 提高迭代速度
+- 方便后续 1.5B / 3B 扩展
+- 符合真实后训练工程实践
+
+但是架构不要锁死。
+
+配置应支持：
+
+```text
+peft.enabled: true / false
+```
+
+第一版只要求 LoRA 跑通。
+
+---
+
+## LoRA 配置
+
+显式配置：
+
+```text
+r
+lora_alpha
+lora_dropout
+target_modules
+bias
+task_type
+```
+
+不要使用隐藏默认值而不记录。
+
+训练结果 manifest 中必须保存 LoRA 配置。
+
+---
+
+# 八、训练结果必须保存什么
+
+每一次 SFT run 创建独立：
+
+```text
+runs/<run_id>/
+```
+
+至少保存：
+
+```text
+config.yaml
+run_manifest.json
+training_metrics.json
+checkpoint/
+```
+
+manifest 必须包含：
+
+```text
+run_id
+stage = sft
+model
+base_model
+dataset
+dataset SHA-256
+dataset fingerprint
+frozen test SHA-256
+seed
+git commit if available
+python version
+torch version
+transformers version
+trl version
+peft version
+CUDA availability
+GPU model
+training config
+LoRA config
+start time
+end time
+training duration
+final checkpoint
+```
+
+如果某项拿不到，可以为 null。
+
+不要伪造。
+
+---
+
+# 九、训练后评测
+
+SFT 完成后：
+
+必须调用 **现有 V0 evaluation pipeline**。
+
+禁止复制一套新的 evaluator。
+
+逻辑必须是：
+
+```text
+Base checkpoint
+        │
+        ├──── Existing Evaluator ────→ Base Metrics
+        │
+SFT checkpoint
+        │
+        └──── Existing Evaluator ────→ SFT Metrics
+```
+
+确保：
+
+```text
+same frozen dataset
+same prompt policy
+same decoding config
+same answer extractor
+same metric implementation
+same max_new_tokens
+same seed where applicable
+```
+
+---
+
+# 十、Base 与 SFT 对比
+
+新增统一 comparison 模块。
+
+生成：
+
+```text
+results/comparisons/base_vs_sft.json
+```
+
+同时生成人类可读：
+
+```text
+results/comparisons/base_vs_sft.md
+```
+
+至少比较：
+
+```text
+accuracy
+format_valid_rate
+avg_output_tokens
+samples_per_second
+```
+
+如果训练侧可以可靠获得，再增加：
+
+```text
+training_time
+peak_vram
+train_samples_per_second
+```
+
+输出类似：
+
+```text
+Metric                  Base        SFT        Delta
+----------------------------------------------------
+Accuracy                0.xxx       0.xxx      +x.xx%
+Format valid rate       0.xxx       0.xxx      +x.xx%
+Avg output tokens       xxx         xxx        +xx
+Samples / sec           x.xx        x.xx       ...
+```
+
+不要预填任何结果。
+
+所有数值必须来自真实运行文件。
+
+---
+
+# 十一、Failure Analysis
+
+P1 不需要复杂研究，但必须增加一个最基本的错误分析。
+
+从 frozen test 自动提取：
+
+```text
+Base wrong → SFT correct
+Base correct → SFT wrong
+Both correct
+Both wrong
+```
+
+分别保存若干代表性案例。
+
+例如：
+
+```text
+results/analysis/base_vs_sft_cases.jsonl
+```
+
+每条记录包含：
+
+```text
+question
+gold_answer
+
+base_output
+base_extracted_answer
+base_correct
+
+sft_output
+sft_extracted_answer
+sft_correct
+
+transition
+```
+
+其中：
+
+```text
+transition ∈ {
+    "improved",
+    "regressed",
+    "both_correct",
+    "both_wrong"
+}
+```
+
+最终统计：
+
+```text
+num_improved
+num_regressed
+num_both_correct
+num_both_wrong
+```
+
+这是 PostTrainStack 第一版真正有价值的分析能力。
+
+---
+
+# 十二、命令行体验
+
+最终用户至少能运行：
+
+```bash
+make test
+```
+
+```bash
+make data
+```
+
+```bash
+make eval-base
+```
+
+```bash
+make sft-smoke
+```
+
+```bash
+make sft
+```
+
+```bash
+make eval-sft
+```
+
+```bash
+make compare-sft
+```
+
+如果当前项目更适合统一 CLI，也可以同时支持：
+
+```bash
+posttrain data prepare
+posttrain train sft --config ...
+posttrain evaluate --config ...
+posttrain compare base sft
+```
+
+但不要为了 CLI 做过度工程。
+
+Makefile 命令必须可用。
+
+---
+
+# 十三、测试要求
+
+至少新增：
+
+### Dataset tests
+
+- GSM8K train → SFT format 正确
+- Final answer 标准化正确
+- train/frozen overlap detection 正确
+- dataset SHA-256 稳定
+
+### Config tests
+
+- SFT YAML 可以正常加载
+- 缺少关键参数时明确失败
+
+### Training smoke tests
+
+不要求 CI 真正下载并训练完整模型。
+
+可以使用：
+
+- mock
+- tiny fixture
+- very small local model if appropriate
+
+验证：
+
+```text
+trainer initialization
+output directory
+manifest creation
+checkpoint discovery
+```
+
+### Comparison tests
+
+构造人工 Base / SFT prediction fixture，验证：
+
+```text
+improved
+regressed
+both_correct
+both_wrong
+delta metrics
+```
+
+全部逻辑正确。
+
+---
+
+# 十四、安全与实验治理要求
+
+必须遵守：
+
+1. 不修改 frozen test 内容
+2. 不因为 SFT 调整 evaluator
+3. 不读取 frozen labels 参与训练
+4. 不把 test accuracy 用于选择 checkpoint
+5. 不把训练集和 frozen test 混合
+6. 不伪造运行结果
+7. 不把未运行指标写入 README
+8. 不声称 GPU / VRAM / throughput 已验证，除非实际运行
+9. Smoke test 和正式实验结果必须区分
+10. 所有可复现关键参数进入 manifest
+
+---
+
+# 十五、不要做的东西
+
+本阶段明确禁止：
+
+```text
+DPO
+Reward Model
+GRPO
+PPO
+RLHF
+OpenRLHF migration
+Ray
+DeepSpeed multi-node
+vLLM rollout
+distributed training
+W&B 强依赖
+复杂 Web UI
+数据库
+实验 dashboard
+Docker 大改造
+论文实验
+reward hacking
+preference noise
+```
+
+这些都属于后续阶段。
+
+P1 只做：
+
+> **可靠的 SFT training → frozen evaluation → comparison。**
+
+---
+
+# 十六、P1 Definition of Done
+
+下面所有条件必须同时满足才算完成。
+
+## G1 — V0 preserved
+
+现有 Base Evaluation 正常。
+
+原测试不被破坏。
+
+---
+
+## G2 — SFT Data Pipeline
+
+可以从 GSM8K train 构建 SFT dataset。
+
+有：
+
+```text
+manifest
+SHA-256
+fingerprint
+leakage check
+```
+
+---
+
+## G3 — SFT Smoke Training
+
+一条命令：
+
+```bash
+make sft-smoke
+```
+
+能够完成：
+
+```text
+load
+train
+save
+reload
+```
+
+---
+
+## G4 — Full SFT
+
+一条命令：
+
+```bash
+make sft
+```
+
+能够产生正式 checkpoint。
+
+如果当前环境没有 GPU 或模型下载条件，必须保证代码路径完整，并明确报告哪些部分因环境没有实际执行。
+
+不要虚构成功。
+
+---
+
+## G5 — Same Frozen Evaluation
+
+SFT checkpoint 通过 V0 evaluator。
+
+---
+
+## G6 — Automatic Comparison
+
+自动生成：
+
+```text
+Base vs SFT
+```
+
+指标差异和 failure transition。
+
+---
+
+## G7 — Tests
+
+所有已有测试 + 新增测试通过。
+
+---
+
+## G8 — Documentation
+
+README 增加：
+
+```text
+P0 Base Evaluation
+P1 SFT
+```
+
+说明：
+
+```text
+安装
+准备数据
+Smoke Run
+正式训练
+评测
+对比
+结果文件
+```
+
+README 中任何 benchmark 数字只能来自真实保存的实验结果。
+
+---
+
+# 十七、最终交付
+
+完成后给出：
+
+1. 修改后的完整项目
+2. 文件变更清单
+3. 架构变化
+4. 实际运行过的命令
+5. 测试结果
+6. Smoke Train 是否成功
+7. Full SFT 是否实际运行
+8. Base Evaluation 是否实际运行
+9. SFT Evaluation 是否实际运行
+10. 哪些结果是真实实验数据
+11. 哪些项目因为硬件 / 网络 / 时间环境未实际执行
+12. 下一阶段 P2 需要做什么
+
+不要只给代码 diff。
+
+必须把项目推进到当前环境允许达到的最完整状态。
+
+不要向我询问实现细节。
+
+遇到一般工程选择直接采用合理默认值并继续完成。
+
+不要提前实现 P2。
+
+现在开始。
+
+这一步完成以后，我们不要马上上 DPO。**先看一次真实的 `Base → SFT` 结果和 failure cases**。如果发现 SFT pipeline 没问题，再进入 **P2：Preference Data + DPO**。这样你会第一次真正看到“后训练前后模型行为发生了什么”，而不是把四个 Trainer 一口气跑完。

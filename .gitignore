@@ -1,0 +1,28 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+.env
+*.egg-info/
+build/
+dist/
+
+# Generated experiment artifacts
+data/frozen/*.jsonl
+data/frozen/*.json
+results/*.json
+results/*.jsonl
+
+# Model / cache artifacts
+.cache/
+checkpoints/
+wandb/
+runs/
+data/sft/
+results/comparisons/
+results/analysis/
+results/smoke/
+_v0_tmp/
+PostTrainStack_V0.zip
+.codegraph/

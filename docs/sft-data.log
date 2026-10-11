@@ -1,0 +1,14 @@
+{
+  "source_dataset": "openai/gsm8k",
+  "source_config": "main",
+  "source_split": "train",
+  "num_samples": 32,
+  "seed": 42,
+  "dataset_sha256": "d25a3ae763acea23c56f7946e957b62ee95b4b4bdabc72b8353e1cde7c017a54",
+  "dataset_fingerprint": "c6f812ae33c9159d",
+  "created_at_utc": "2026-10-01T13:34:20.736484+00:00",
+  "frozen_file_sha256": "6f10ab3cfb58393d2df503f3a1f640b85c056894f56610e65de256a7d40b8e2e",
+  "exact_overlap_count": 0,
+  "audited_source_samples": 7473,
+  "question_normalization": "NFKC-casefold-whitespace-v1"
+}

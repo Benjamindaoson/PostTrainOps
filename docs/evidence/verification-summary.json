@@ -1,0 +1,12 @@
+{
+  "tests_passed": 22,
+  "tests_failed": 0,
+  "tests_skipped": 0,
+  "warnings": 1,
+  "official_benchmark": null,
+  "frozen_sha256": "6f10ab3cfb58393d2df503f3a1f640b85c056894f56610e65de256a7d40b8e2e",
+  "changed_modules_lint": "passed",
+  "full_repository_lint": "5 pre-existing V0 findings",
+  "pip_check": "passed",
+  "wheel_build": "passed"
+}

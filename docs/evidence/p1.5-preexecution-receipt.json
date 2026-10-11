@@ -1,0 +1,31 @@
+{
+  "recorded_at_utc": "2026-10-01T14:02:48.905997+00:00",
+  "stage": "p1.5",
+  "status": "BLOCKED_AWAITING_CUDA_HOST",
+  "protocol": "one-shot fixed full config; no frozen-test tuning",
+  "hashes": {
+    "configs/sft/full.yaml": "ebfd67f130074643e7aa101075c2379ce57ebc5e12a2bb99be86974123de3a17",
+    "configs/sft/smoke.yaml": "2256a9a9787dab6a8ece8cfd593aedc5738c78aefd08202287e741c921e77f39",
+    "configs/base/qwen2_5_0_5b_gsm8k.yaml": "32c92108095ef828d78b4160750c2fc60e6856cde0542cf151ec15348fa4a343",
+    "src/posttrain_stack/evaluation/run.py": "a199603e667a53391f3e175364f130318918974c3ec02a7cf03fac1f7f9499b2",
+    "src/posttrain_stack/evaluation/metrics.py": "18a14833c080fa88002ad45afcb71ba0345d27bae2fc9005704413b01bfe9342",
+    "src/posttrain_stack/data/answers.py": "8a146721d97f4483fbcfb998af4bb0bbd5b0f7b5e4837de016d7444f61637d33",
+    "data/frozen/gsm8k_test_500_seed42.jsonl": "6f10ab3cfb58393d2df503f3a1f640b85c056894f56610e65de256a7d40b8e2e",
+    "data/frozen/gsm8k_test_500_seed42.manifest.json": "c818fd3285c4af3a6a610088a3180784bafbfed0279ec2669de69b6c883a2867",
+    "data/sft/train.jsonl": "78f67bdbbeb08816c9f33b92a5041eb7b0eb07661db64704cff80a03b065bd4c",
+    "data/sft/train.manifest.json": "7ff77954f26accac30004d56e6ca0d304b98060bd78cd2a531a85c4ddd3ea920"
+  },
+  "frozen_samples": 500,
+  "train_samples": 7473,
+  "normalized_question_overlap": 0,
+  "source_split": "train",
+  "cached_model_revision": "7ae557604adf67be50417f59c2c2f167def9a775",
+  "revision_scope": "local cached reference, not proof of complete weights or future GPU execution",
+  "incomplete_weight_files": [],
+  "formal_results_exist": {
+    "results/base_predictions.jsonl": false,
+    "results/base_metrics.json": false,
+    "results/sft_predictions.jsonl": false,
+    "results/sft_metrics.json": false
+  }
+}

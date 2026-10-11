@@ -1,0 +1,10 @@
+{
+  "epoch": 0.8333333333333334,
+  "peak_vram_bytes": null,
+  "total_flos": 810240.0,
+  "train_loss": 2.573521685600281,
+  "train_runtime": 0.2215,
+  "train_samples_per_second": 45.155,
+  "train_steps_per_second": 45.155,
+  "training_time": 0.426718400005484
+}

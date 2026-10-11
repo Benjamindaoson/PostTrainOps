@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "D:\01_work\PostTrainOps\src\posttrain_stack\training\sft.py", line 122, in run_training
+    raise RuntimeError('Full bf16 config requires a supported CUDA device')
+RuntimeError: Full bf16 config requires a supported CUDA device

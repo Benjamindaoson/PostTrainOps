@@ -1,0 +1,1129 @@
+对。这个方向如果要成立，必须把两件事彻底分开：
+
+- **商业价值：企业为什么愿意花钱，它减少什么损失、释放什么自动化能力。**
+- **学术价值：它提出了什么以前没有被充分定义和验证的科学问题。**
+
+先只谈商业价值。
+
+## 一、它商业上真正解决的，不是“Agent 不够聪明”，而是“企业不敢放手让 Agent 干活”
+
+2026 年企业 AI 已经明显从“回答问题”转向“执行工作”。OpenAI 今年披露，其企业客户中，Codex 产生的 token 已占 ChatGPT + Codex 输出 token 的 64%，法律、销售、招聘、营销等非研发领域的 agentic usage 也在快速增长。:chatgpt-content-reference{index="0"}
+
+所以现在真正的问题已经变了。
+
+2023–2024 企业问：
+
+> AI 能不能回答这个问题？
+
+2025：
+
+> Agent 能不能完成这个流程？
+
+到 2026，越来越关键的问题是：
+
+> **我敢不敢把权限真正交给它？**
+
+例如让 Agent：
+
+- 修改 CRM；
+- 更新 ERP；
+- 提交采购单；
+- 操作 Excel；
+- 发邮件；
+- 筛选和约面试候选人；
+- 修改生产数据库；
+- 操作内部桌面软件；
+- 自动处理退款；
+- 删除、移动、上传文件；
+- 驱动机器人完成搬运、抓取、装配。
+
+最大的商业障碍已经不是：
+
+> “模型不会操作。”
+
+而是：
+
+> **企业无法确定 Agent 执行完以后，真实世界到底有没有变成它以为的样子。**
+
+Microsoft 今年对企业 Agent 的表述其实非常直接：真正落地需要的是围绕模型建立能够运行真实生产任务、具备治理、观察和持续改进能力的系统；否则 Agent 仍然是 fragile、难以大规模信任的。:chatgpt-content-reference{index="1"}
+
+这就是你的商业入口。
+
+---
+
+# 二、真正值钱的是“Silent Failure”
+
+Agent 最麻烦的不是：
+
+```text
+ERROR 500
+```
+
+这种错误很好解决。
+
+真正贵的是：
+
+# Silent Failure
+
+系统认为：
+
+```text
+任务完成。
+```
+
+实际上：
+
+```text
+没有完成
+或者
+完成错了
+或者
+只完成了一半
+或者
+造成了额外副作用
+```
+
+例如 HR Agent：
+
+> “已经给这 20 位候选人安排面试。”
+
+真实世界：
+
+- 17 人成功；
+- 1 人时区错；
+- 1 人邮件没发出去；
+- 1 人重复安排。
+
+Agent 最终却回答：
+
+> Completed successfully.
+
+---
+
+财务 Agent：
+
+> “已经更新本月 38 个付款记录。”
+
+实际：
+
+37 个正确，
+
+1 个填错金额。
+
+---
+
+Computer Use Agent：
+
+> “文件已经保存。”
+
+实际：
+
+Save 弹窗被挡住，
+
+文件根本没有写入。
+
+---
+
+机器人：
+
+> “已经把零件放入料箱。”
+
+实际上零件掉在料箱边缘。
+
+如果系统能够直接告诉你：
+
+> **我失败了。**
+
+问题反而没那么严重。
+
+最危险的是：
+
+\[
+Failure
++
+Unawareness
+\]
+
+也就是：
+
+\[
+\boxed{Undetected\ Failure}
+\]
+
+这东西在商业系统里面非常贵。
+
+---
+
+# 三、所以这个产品本质上不是“另一个 Agent”
+
+这是非常重要的定位。
+
+我不会做：
+
+> Another AI Agent Platform
+
+市场已经太挤。
+
+我会做：
+
+# **Agent Execution Assurance Layer**
+
+中文可以理解成：
+
+> **智能体执行保障层**
+
+它部署在：
+
+```text
+Agent
+   ↓
+Execution Assurance Layer
+   ↓
+Tools / Browser / OS / API / Robot
+   ↓
+Real World
+```
+
+它负责的不是：
+
+> “下一步应该干什么？”
+
+而是：
+
+> **“你刚才干的事情，真的成功了吗？”**
+
+---
+
+# 四、产品最核心的运行流程
+
+Agent 准备执行：
+
+```text
+send_email()
+```
+
+系统不只是记录：
+
+```text
+tool_call = success
+```
+
+而是首先建立：
+
+## Expected Effect
+
+```yaml
+expected:
+  message_created: true
+  recipient: alice@company.com
+  sent_folder_entry: true
+  delivery_request_created: true
+```
+
+然后执行：
+
+```text
+Send
+```
+
+执行以后检查：
+
+```text
+API response
+Sent folder
+database state
+UI state
+network state
+```
+
+形成：
+
+## Actual Effect
+
+然后：
+
+\[
+Expected
+\overset{?}{=}
+Actual
+\]
+
+如果不相等：
+
+```text
+Do not continue blindly.
+```
+
+而是选择：
+
+```text
+retry
+verify
+rollback
+alternative route
+ask human
+abort
+```
+
+所以真正的商业产品闭环是：
+
+\[
+\boxed{
+Predict
+\rightarrow
+Execute
+\rightarrow
+Verify
+\rightarrow
+Recover
+}
+\]
+
+---
+
+# 五、这个产品卖的其实不是 Verification，而是“Autonomy”
+
+这一点特别重要。
+
+企业不会因为你有一个漂亮的 verifier 就给很多钱。
+
+企业真正买的是：
+
+> **我原来需要人盯着 Agent，现在能不能少盯一点？**
+
+假设现在 Agent 能完成 90% 的任务。
+
+听起来很好。
+
+但是如果剩下 10% 的失败中，大量属于：
+
+> Agent 自己不知道自己失败了，
+
+那么企业必须：
+
+```text
+100% 人工复核
+```
+
+这就导致：
+
+\[
+Automation\ Rate
+\neq
+Model\ Success\ Rate
+\]
+
+例如：
+
+Agent success：
+
+\[
+90\%
+\]
+
+但因为无法知道是哪 10% 错了，
+
+企业仍必须人工审核：
+
+\[
+100\%
+\]
+
+于是自动化价值非常有限。
+
+---
+
+如果你的系统做到：
+
+失败识别 Recall：
+
+\[
+95\%
+\]
+
+那么大多数成功任务可以：
+
+```text
+自动放行
+```
+
+只有少数高风险任务进入人工。
+
+于是变成：
+
+```text
+10000 tasks
+
+8500 自动通过
+1000 自动恢复
+500 人工检查
+```
+
+这才叫：
+
+# Human Supervision Compression
+
+---
+
+# 六、这可能是它最大的商业价值
+
+我会把商业价值压缩成一个公式：
+
+\[
+\boxed{
+Business\ Value
+=
+More\ Autonomy
+-
+Failure\ Cost
+-
+Human\ Review
+-
+Compute\ Waste
+}
+\]
+
+其中最大的变量往往是：
+
+## Human Review
+
+因为 Agent 如果不可信，
+
+你就必须：
+
+```text
+AI 做一次
++
+人再检查一次
+```
+
+那自动化只是：
+
+> AI 辅助。
+
+而不是：
+
+> Autonomous Execution。
+
+所以这个系统真正把企业从：
+
+\[
+Human\ in\ every\ loop
+\]
+
+推向：
+
+\[
+Human\ on\ exceptions
+\]
+
+也就是：
+
+> **人不再检查每一个任务，只处理异常。**
+
+这是巨大的经济变化。
+
+---
+
+# 七、因此客户愿意付钱的第一个理由：降低人工监督成本
+
+可以举一个纯示意模型。
+
+假设企业一天执行：
+
+\[
+100,000
+\]
+
+次 Agent action。
+
+人工复核一次平均成本：
+
+\[
+\$0.50
+\]
+
+全部人工检查：
+
+\[
+\$50,000/day
+\]
+
+如果 Assurance Layer 可以让：
+
+\[
+90\%
+\]
+
+低风险、被验证的操作自动通过，
+
+人工只复核：
+
+\[
+10,000
+\]
+
+那么人工复核成本：
+
+\[
+\$5,000/day
+\]
+
+节约：
+
+\[
+\$45,000/day
+\]
+
+注意，这只是示意，不是市场实测数字。
+
+但它解释了商业模式：
+
+> **不是按“模型准确率提升几个百分点”卖。**
+
+而是按：
+
+\[
+Human\ review\ reduction
+\]
+
+卖。
+
+---
+
+# 八、第二个价值：防止错误扩散
+
+这点对于 long-horizon agent 极其重要。
+
+比如一个 Agent 工作流：
+
+```text
+读取订单
+↓
+修改库存
+↓
+生成发票
+↓
+发送客户
+↓
+更新 CRM
+↓
+通知物流
+```
+
+假设：
+
+第二步已经错了。
+
+现有 Agent 很可能：
+
+```text
+错
+↓
+继续
+↓
+继续
+↓
+继续
+↓
+继续
+```
+
+最后一次错误影响：
+
+- 库存；
+- 财务；
+- CRM；
+- 客户；
+- 物流。
+
+一个局部错误变成：
+
+# Cascading Failure
+
+你的系统如果在第二步后发现：
+
+\[
+ExpectedState
+\neq
+ActualState
+\]
+
+就可以直接：
+
+```text
+STOP
+```
+
+于是：
+
+\[
+1\ error
+\]
+
+不会变成：
+
+\[
+5\ downstream\ errors
+\]
+
+商业价值是：
+
+# Blast Radius Reduction
+
+这在企业系统里非常值钱。
+
+---
+
+# 九、第三个价值：减少 Agent 的重复执行和 Token 浪费
+
+现在 Agent 很容易：
+
+```text
+click
+没反应
+think
+click
+没反应
+think
+click
+没反应
+think
+```
+
+或者：
+
+```text
+调用工具
+↓
+重新读全部 context
+↓
+LLM reasoning
+↓
+再次调用
+```
+
+企业真正付的是：
+
+- token；
+- inference；
+- tool API；
+- browser VM；
+- GPU；
+- execution time。
+
+Anthropic今年甚至专门给 Enterprise 增加了更细粒度的 spend analytics、spend caps、model routing 等成本控制，因为 agentic workloads 的成本模式已经不同于普通聊天。:chatgpt-content-reference{index="2"}
+
+如果你的系统可以识别：
+
+```text
+this action already failed
+```
+
+就可以阻止：
+
+\[
+Retry^{10}
+\]
+
+所以它还有一个很明确的 ROI：
+
+# Wasted Inference Reduction
+
+---
+
+# 十、第四个商业价值：缩短 Agent debugging
+
+这是另外一个很大的市场。
+
+现在一个 Agent 任务失败：
+
+```text
+80 steps
+```
+
+工程师看到：
+
+```text
+Task failed.
+```
+
+然后要人工翻：
+
+```text
+step 1
+step 2
+...
+step 47
+step 48
+...
+step 80
+```
+
+找到：
+
+> 第 37 步其实已经错了。
+
+Microsoft Research 今年的 AgentRx 就明确把这一问题定义为 Agent debugging 难点：trajectory 长且具有随机性，真正 root cause 很容易埋在很早以前；他们的工作专门定位第一个 critical failure step。:chatgpt-content-reference{index="3"}
+
+如果你的系统天然维护：
+
+```text
+Expected Effect
+Actual Effect
+Mismatch
+Detection
+Recovery
+```
+
+那么日志可以直接变成：
+
+```text
+Step 37
+
+Action:
+submit_form
+
+Expected:
+status = submitted
+
+Actual:
+status = draft
+
+Failure:
+execution mismatch
+
+Agent response:
+failed to detect
+
+Downstream affected:
+38–52
+```
+
+这就是：
+
+# Agent Sentry
+
+有点类似传统软件里的：
+
+> Sentry / Datadog
+
+但不是监控：
+
+```text
+CPU
+Memory
+Exception
+```
+
+而是监控：
+
+```text
+Agent Intent
+Action
+World Effect
+Mismatch
+Recovery
+```
+
+这会成为一个非常明确的开发者产品。
+
+---
+
+# 十一、第五个价值：给高风险动作增加“动态权限”
+
+今天企业治理 Agent 最大的问题之一是：
+
+要么：
+
+```text
+允许
+```
+
+要么：
+
+```text
+禁止
+```
+
+但现实应该是：
+
+```text
+低风险 → 自动执行
+中风险 → 执行后验证
+高风险 → 执行前审批
+不可逆 → 人工确认
+```
+
+例如：
+
+```text
+read_file
+```
+
+自动。
+
+```text
+edit_excel
+```
+
+执行后验证。
+
+```text
+send_external_email
+```
+
+风险判断。
+
+```text
+delete_database
+```
+
+必须审批。
+
+这其实形成：
+
+# Dynamic Autonomy
+
+Gartner 在 2026 年明确警告，把不同自主程度和权限范围的 Agent 用同一套治理方式处理会导致失败；它预测到 2027 年，相当一部分企业会因为生产事故暴露出的治理缺口而降低或停用自主 Agent。:chatgpt-content-reference{index="4"}
+
+所以你的系统并不是：
+
+> “让 Agent 更保守。”
+
+而是：
+
+> **让企业敢于给不同 Agent 不同程度的自主权。**
+
+---
+
+# 十二、这其实可以变成一个非常清楚的 B2B 产品类别
+
+我会把产品定位成：
+
+# Agent Reliability / Execution Control Plane
+
+它不和：
+
+```text
+OpenAI
+Anthropic
+Gemini
+Qwen
+```
+
+竞争。
+
+反而全部支持。
+
+架构：
+
+```text
+        GPT / Claude / Gemini / Open Source
+                       │
+                       ▼
+                 Agent Runtime
+                       │
+                       ▼
+        ┌───────────────────────────┐
+        │ Execution Assurance Layer │
+        │                           │
+        │ State Tracking            │
+        │ Expected Effects          │
+        │ Verification Routing      │
+        │ Risk Estimation           │
+        │ Recovery                  │
+        │ Audit Trail               │
+        └─────────────┬─────────────┘
+                      ▼
+              Tools / OS / API
+                      ▼
+                 Real World
+```
+
+它天然是：
+
+# Model-Agnostic Infrastructure
+
+模型越多，
+
+Agent 越多，
+
+它反而越有价值。
+
+---
+
+# 十三、第一批最值得卖的，不应该是普通聊天 Agent
+
+真正高价值的是：
+
+## 1. Enterprise Computer-Use Agent
+
+例如：
+
+- 银行后台；
+- 保险理赔；
+- 财务共享中心；
+- HR；
+- ERP；
+- SAP；
+- 老旧内部系统；
+- 浏览器后台；
+- 桌面 RPA 替代。
+
+因为这些系统：
+
+> API 不完整 + GUI 很复杂 + 状态很多 + 出错代价真实存在。
+
+这就是最佳商业入口。
+
+OpenAI 今年已经把 Computer Use 引入 Windows 工作流，并允许 Business/Enterprise Agent 跨应用执行实际任务；Enterprise 默认仍保留管理员控制，这恰恰说明“能执行”和“敢授权执行”是两个不同问题。:chatgpt-content-reference{index="5"}
+
+---
+
+# 十四、第二批客户：Agent SaaS 厂商
+
+例如做：
+
+```text
+HR Agent
+Sales Agent
+Finance Agent
+Customer Service Agent
+Research Agent
+```
+
+的公司。
+
+他们自己通常不想重新实现：
+
+```text
+state tracking
+failure detection
+retry
+rollback
+verification
+evaluation
+audit
+```
+
+你给：
+
+```python
+@verified_action(
+    risk="high",
+    expected_effect=...
+)
+def update_crm(...):
+    ...
+```
+
+或者：
+
+```python
+result = assurance.execute(
+    action=agent_action,
+    expected_effect=contract
+)
+```
+
+直接获得：
+
+```text
+execution confidence
+effect verification
+retry
+rollback
+trace
+audit
+```
+
+这就是基础设施公司。
+
+---
+
+# 十五、第三批：机器人
+
+机器人其实商业价值更大，
+
+但我不会把它作为第一阶段商业切入。
+
+因为机器人：
+
+- 硬件异构；
+- 部署周期长；
+- 数据昂贵；
+- 销售周期长；
+- physical safety 要求高。
+
+但以后：
+
+```text
+Warehouse
+Manufacturing
+Home Robot
+Service Robot
+```
+
+全部需要：
+
+> **机器人怎么知道刚才动作真的成功？**
+
+例如：
+
+```text
+Pick
+```
+
+以后不是继续：
+
+```text
+Place
+```
+
+而是：
+
+```text
+Pick
+↓
+Check grasp
+↓
+confidence > threshold
+↓
+Place
+```
+
+否则：
+
+```text
+空手 Place
+```
+
+这是工业机器人非常真实的 failure mode。
+
+所以长期这个技术可以变成：
+
+# Physical Agent Reliability Layer
+
+---
+
+# 十六、真正的大商业故事其实来自“Agent Economy”
+
+如果未来：
+
+一个公司拥有：
+
+```text
+10,000 humans
++
+100,000 agents
+```
+
+那么企业不会安排：
+
+```text
+10,000 humans
+```
+
+天天看 Agent。
+
+它需要一个：
+
+# Machine Supervisor Layer
+
+自动判断：
+
+```text
+哪些 Agent 正常？
+哪些失败？
+哪些可以自己恢复？
+哪些需要升级？
+哪些必须叫人？
+```
+
+这时候你的系统其实类似：
+
+过去云计算时代的：
+
+```text
+Kubernetes
++
+Datadog
++
+Sentry
++
+Policy Engine
+```
+
+在 Agent 时代的结合体。
+
+但服务对象不是：
+
+> server。
+
+而是：
+
+> **autonomous action。**
+
+---
+
+# 十七、所以我认为这个方向商业上的终局，不是“Verifier API”
+
+而是：
+
+# Autonomous Systems Reliability Infrastructure
+
+或者产品语言：
+
+# Execution Assurance for AI Agents
+
+它解决：
+
+\[
+\boxed{
+Can\ I\ trust\ this\ agent
+to\ act\ without\ watching\ every\ step?
+}
+\]
+
+这才是 CEO / CIO / CTO 愿意付钱的问题。
+
+不是：
+
+> 你的 verifier accuracy 是多少？
+
+---
+
+# 十八、商业价值可以最终浓缩成五件事情
+
+1. **降低人工监督**：从“每个任务人工检查”变成“只处理异常”。
+
+2. **减少 silent failure 和连锁错误**：错误在产生时就被发现，而不是最终结果已经污染多个系统才暴露。
+
+3. **降低 Agent 运行成本**：减少无效 reasoning、重复 tool call、反复重试和长 context。
+
+4. **降低生产事故与治理风险**：高风险操作动态升级验证、审批或人工接管。
+
+5. **提高可交付的自主程度**：这其实是最值钱的一点——**同一个基础模型，因为拥有可靠执行层，可以从“AI 助手”升级成“真正能被授权干活的 Agent”。**
+
+所以，从商业角度，我甚至不会把这个项目对外称为：
+
+> Action Consequence Understanding。
+
+那个名字适合论文。
+
+商业产品应该讲：
+
+> **AI Agents can act. We make sure their actions actually worked.**
+
+它卖的不是“聪明”。
+
+它卖的是：
+
+\[
+\boxed{\textbf{Trustworthy Autonomy}}
+\]
+
+**模型公司负责让 Agent 更有能力；你这层负责让企业敢把真实工作交给 Agent。**
+
+这两者不是同一种商业价值。后面再谈学术价值时，我会完全换一套视角：重点会变成 **failure decomposition、action consequence recognition、partial observability、selective verification、closed-loop intelligence**，以及分别适合 **NeurIPS / ICML / ICLR、ACL/EMNLP、CoRL/RSS、CHI/UIST** 中哪一条投稿路线。
